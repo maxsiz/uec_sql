@@ -1,36 +1,289 @@
+/* Formatted on 08.08.2017 14:48:22 (QP5 v5.126) */
 --active tickets, trips, avg, max
-SELECT count(*) as tickets, SUM(kol_t) as TRIPS, TRUNC(AVG(kol_t), 2) as AVERAGE , MAX(kol_t) as PIK FROM (
+
+SELECT count(*) as tickets, SUM(kol_t) as TRIPS, TRUNC(AVG(kol_t), 2) as
+        AVERAGE , MAX(kol_t) as PIK
+        FROM (
 SELECT T.CARD_NUM, count (*) as kol_t
  FROM CPTT.T_DATA T
     INNER JOIN CPTT.DIVISION D ON T.ID_DIVISION=D.ID
     INNER JOIN CPTT.OPERATOR O ON D.ID_OPERATOR=O.ID  and O.ROLE=1
- WHERE 
-     T.CARD_SERIES  in (83) 
-     --and O.CODE in ('0002','0003','0004','0005','0006','0007','0008','0009','0011','0012','0013','0014'
-     --               ,'0015','0016','0017','0018','0019','0020','0021','0022','0023','0024','0025','0026','0027','0062')  
-AND   T.KIND=17 
---AND TO_CHAR(TRUNC(T.DATE_OF,'MM'), 'DDMMYYYY') = '01052016'
- AND T.DATE_OF > TO_DATE('01.05.2016 00:00:00','DD.MM.YYYY HH24:MI:SS')
-GROUP BY T.CARD_NUM 
+ WHERE
+    nvl(T.NEW_CARD_SERIES, T.CARD_SERIES)  in (84)
+AND   T.KIND=17
+--AND TO_CHAR(TRUNC(T.DATE_OF,'MM'), 'DDMMYYYY') = '01102016'
+AND TRUNC(T.DATE_OF,'DD') >= TO_DATE('01.05.2017','DD.MM.YYYY')
+--AND T.INS_DATE < TO_DATE('09.01.2017 10:06:49','DD.MM.YYYY HH24:MI:SS') --время "закрытия" месяца
+--exclude >30
+and T.ID not in (0)
+GROUP BY T.CARD_NUM
 )
+--more than avg
+SELECT count(*) as tickets, SUM(kol_t) as TRIPS, TRUNC(AVG(kol_t), 2) as
+        AVERAGE , MAX(kol_t) as PIK
+        FROM (
+SELECT T.CARD_NUM, count (*) as kol_t
+ FROM CPTT.T_DATA T
+    INNER JOIN CPTT.DIVISION D ON T.ID_DIVISION=D.ID
+    INNER JOIN CPTT.OPERATOR O ON D.ID_OPERATOR=O.ID  and O.ROLE=1
+ WHERE
+     nvl(T.NEW_CARD_SERIES, T.CARD_SERIES)  in (83)
+AND   T.KIND=17
+AND TO_CHAR(TRUNC(T.DATE_OF,'MM'), 'DDMMYYYY') = '01122016'
+AND T.INS_DATE < TO_DATE('09.01.2017 10:06:49','DD.MM.YYYY HH24:MI:SS')
+        --a?aiy "cae?uoey" ianyoa
+--exclude >30
+and T.ID not in (0)
+--exclude STOLLEN CARD
+AND t.card_num NOT IN (
+'0003024684' --test card
+)
+GROUP BY T.CARD_NUM
+)
+--HAVING SUM(kol_t)>37.46
+
 
 --maked cards
-select count(*) 
-from CPTT.CARD C 
-WHERE C.SERIES = 83
+select
+count(*)
+from CPTT.CARD C
+WHERE C.SERIES in (67)
+AND C.INS_DATE between  TO_DATE('01.01.2016 00:00:00','DD.MM.YYYY HH24:MI:SS')
+  and TO_DATE('01.10.2017 00:00:00','DD.MM.YYYY HH24:MI:SS')
 
 --всего активных карт в системе
 SELECT count(*) FROM (
 SELECT T.CARD_NUM
  FROM CPTT.T_DATA T
- WHERE  T.CARD_SERIES  in (83) 
-  AND T.DATE_OF > TO_DATE('01.01.2016 00:00:00','DD.MM.YYYY HH24:MI:SS')
-GROUP BY T.CARD_NUM 
+ WHERE  nvl(T.NEW_CARD_SERIES, T.CARD_SERIES)  in (67)
+--AND TO_CHAR(TRUNC(T.DATE_OF,'MM'), 'DDMMYYYY') >= '01012016'
+AND T.date_of between  TO_DATE('01.01.2017 00:00:00','DD.MM.YYYY HH24:MI:SS')
+  and TO_DATE('01.07.2017 00:00:00','DD.MM.YYYY HH24:MI:SS')
+
+  AND   T.KIND=17
+GROUP BY T.CARD_NUM
 )
 --поездок по картам
-SELECT T.CARD_NUM, count(*) as kol
- FROM CPTT.T_DATA T
- WHERE  T.CARD_SERIES  in (83) 
-   AND T.DATE_OF > TO_DATE('01.05.2016 00:00:00','DD.MM.YYYY HH24:MI:SS')
-GROUP BY T.CARD_NUM 
+SELECT  *
+--count(*) as kol
+FROM CPTT.T_DATA T
+    INNER JOIN CPTT.DIVISION D ON T.ID_DIVISION=D.ID
+    INNER JOIN CPTT.OPERATOR O ON D.ID_OPERATOR=O.ID  and O.ROLE=1
+ WHERE
+     T.CARD_SERIES  in (83)
+and   O.CODE !='0080' --исключим Усолье
+AND   T.KIND=17
+AND T.CARD_NUM   in ('0003014897')
+AND T.DATE_OF > TO_DATE('31.12.2016  23:59:59','DD.MM.YYYY HH24:MI:SS')
 
+--ограничения
+
+--поездок по картам
+SELECT  T.CARD_NUM, count(*) as kol_p, MIN(T.ST_LIMIT) as ost_ed--,  T.*
+FROM CPTT.T_DATA T
+    INNER JOIN CPTT.DIVISION D ON T.ID_DIVISION=D.ID
+    INNER JOIN CPTT.OPERATOR O ON D.ID_OPERATOR=O.ID  and O.ROLE=1
+ WHERE
+      nvl(T.NEW_CARD_SERIES, T.CARD_SERIES)  in (80,82,83)
+--and   O.CODE !='0080' --исключим Усолье
+AND   T.KIND=17
+--AND T.DATE_OF > TO_DATE('31.08.2016  23:59:59','DD.MM.YYYY HH24:MI:SS')
+ and TO_CHAR(TRUNC(T.DATE_OF,'MM'), 'DDMMYYYY') = '0102017'
+GROUP by  T.CARD_NUM
+HAVING count(*) >300
+
+--статистика по садам
+SELECT TO_CHAR(TRUNC(T.DATE_OF,'MM'), 'YYYYMMDD'), R.CODE
+       ,SUM(decode(T.CARD_SERIES, 64, 1,0)) as kol_64
+       ,SUM(decode(T.CARD_SERIES, 66, 1,0)) as kol_66
+FROM CPTT.T_DATA T
+      INNER JOIN CPTT.ROUTE R ON T.id_route=R.ID AND T.id_division = R.
+        id_division
+ WHERE
+     T.CARD_SERIES  in (64,66)
+AND  T.KIND=17
+AND  T.DATE_OF > TO_DATE('30.04.2016  23:59:59','DD.MM.YYYY HH24:MI:SS')
+AND  R.CODE in ('101','106','108','109','112','114','116','117','118','122',
+        '123','129')
+GROUP by  TO_CHAR(TRUNC(T.DATE_OF,'MM'), 'YYYYMMDD'), R.CODE
+order by  TO_CHAR(TRUNC(T.DATE_OF,'MM'), 'YYYYMMDD'), R.CODE
+
+--Списание более чем одной единицы
+SELECT D.NAME, TO_CHAR(TRUNC(T.DATE_OF,'DD'), 'YYYY.MM.DD') as DATE_OF, T.
+        card_num, T.AMOUNT_TRAVEL
+,T.*
+ FROM CPTT.T_DATA T
+     INNER JOIN CPTT.DIVISION D ON T.ID_DIVISION=D.ID
+    INNER JOIN CPTT.OPERATOR O ON D.ID_OPERATOR=O.ID  and O.ROLE=1
+ WHERE   nvl(T.NEW_CARD_SERIES, T.CARD_SERIES)  in (67)
+  AND T.DATE_OF > TO_DATE('01.11.2016 00:00:00','DD.MM.YYYY HH24:MI:SS')
+  AND T.KIND = 17
+      AND T.AMOUNT_TRAVEL >1
+
+--активные карты по усолью для r1
+select  SUBSTR(T.CARD_NUM,2), count(*) KOL_T, MAX(SUBSTR(REPLACE(C.SOCIAL_CARD
+        ,' ',''),1,19)) as SOCIAL_CARD
+       ,MAX(TRUNC(C.INS_DATE,'DD'))
+  FROM CPTT.T_DATA T
+     INNER JOIN CPTT.CARD C ON T.ID_CARD=C.ID
+ WHERE  T.CARD_SERIES in (80)
+AND   T.KIND in (17)
+AND T.DATE_OF > TO_DATE('31.08.2016 00:00:00','DD.MM.YYYY HH24:MI:SS')
+
+GROUP BY  T.CARD_NUM
+
+--passports
+select 'P' as P, C.SERIES, C.num, C.chip, '99999999' f9, C.social_card, C.f, C
+        .i, C.o
+--,C.*
+from CPTT.CARD C
+WHERE C.SERIES = 80 and C.kind=1
+AND C.INS_DATE > TO_DATE('20150101','YYYYMMDD') --for 67
+
+
+--c нумерацией
+SELECT * from (
+SELECT row_number() over (PARTITION by T.CARD_NUM ORDER BY T.DATE_OF) N,
+   O.CODE, T.CARD_NUM, T.DATE_OF
+--,T.AMOUNT AS TARIF
+--,16 as TARIF
+--, decode(R.ID_CODE_MSG,200001000,1,0) as VID
+--, T.*
+ FROM CPTT.T_DATA T
+    INNER JOIN CPTT.DIVISION D ON T.ID_DIVISION=D.ID
+    INNER JOIN CPTT.OPERATOR O ON D.ID_OPERATOR=O.ID  and O.ROLE=1
+    --INNER JOIN CPTT.ROUTE R ON T.id_route=R.ID AND T.id_division = R.id_division
+ WHERE
+     T.CARD_SERIES  in (83)
+    -- and   O.CODE !='0080'
+     --and O.CODE in ('0002','0003','0004','0005','0006','0007','0008','0009','0011','0012','0013','0014','0015','0016','0017','0018','0019','0020','0021','0022','0023','0024','0025','0026','0027','0028','0062')
+AND   T.KIND=17
+AND TO_CHAR(TRUNC(T.DATE_OF,'MM'), 'DDMMYYYY') = '01112016'
+) R
+WHERE R.N>30
+
+
+---r4  по   сериям
+SELECT nvl(T.NEW_CARD_SERIES, T.CARD_SERIES), count (*) as CARD_COUNT
+--,T.AMOUNT AS TARIF
+--,16 as TARIF
+--, MAX(decode(R.ID_CODE_MSG,200001000,0,16)) as TARIF
+--, decode(R.ID_CODE_MSG,200001000,1,0) as VID
+--, T.*
+ FROM CPTT.T_DATA T
+    INNER JOIN CPTT.DIVISION D ON T.ID_DIVISION=D.ID
+    INNER JOIN CPTT.OPERATOR O ON D.ID_OPERATOR=O.ID  and O.ROLE=1
+    INNER JOIN CPTT.ROUTE R ON T.id_route=R.ID AND T.id_division = R.
+        id_division
+ WHERE
+     nvl(T.NEW_CARD_SERIES, T.CARD_SERIES)  in ( 80,82,83)
+AND   T.KIND=17
+AND TO_CHAR(TRUNC(T.DATE_OF,'MM'), 'DDMMYYYY') = '01122016'
+AND T.INS_DATE < TO_DATE('09.01.2017 10:06:49','DD.MM.YYYY HH24:MI:SS')
+        --a?aiy "cae?uoey" ianyoa
+--exclude >30
+and T.ID not in (0)
+--exclude STOLLEN CARD
+AND t.card_num NOT IN (
+'0003024684' --test card
+)
+--and  decode(R.ID_CODE_MSG,200001000,1,0) = 0 -- 0-ai?ianeea, 1-i?eai?ia
+GROUP BY nvl(T.NEW_CARD_SERIES, T.CARD_SERIES)
+ORDER BY nvl(T.NEW_CARD_SERIES, T.CARD_SERIES)
+
+
+--terminal
+--unload terminal
+select O.NAME, TT.CODE, TT.LAST_UNLOAD_DATE,TT.ID --, TT.*
+from  CPTT.TERM TT
+ INNER JOIN CPTT.DIVISION D ON TT.ID_DIVISION=D.ID
+ INNER JOIN CPTT.OPERATOR O ON D.ID_OPERATOR=O.ID
+  -- and O.ROLE=2 --cash in (kind=1)
+   and O.ROLE=1 --transport (kind=2)
+  WHERE
+  UPPER(O.NAME) like  '%ИРКУТСК%'
+ -- UPPER(O.NAME) like  '%ВЛРП%'
+  AND TT.CODE like '82%'
+  AND TRUNC(sysdate,'DD')-TRUNC(TT.LAST_UNLOAD_DATE,'DD') > 2
+ ORDER BY O.NAME , TT.LAST_UNLOAD_DATE
+ --,TT.CODE
+
+--Поездок по сериим
+SELECT
+ nvl(T.NEW_CARD_SERIES, T.CARD_SERIES)  as SER,
+ TO_CHAR(T.DATE_OF, 'YYYYMMDD') as DATE_OF
+ , count(*) as kol
+FROM CPTT.T_DATA T
+    INNER JOIN CPTT.DIVISION D ON T.ID_DIVISION=D.ID
+    INNER JOIN CPTT.OPERATOR O ON D.ID_OPERATOR=O.ID  and O.ROLE=1
+ WHERE
+      nvl(T.NEW_CARD_SERIES, T.CARD_SERIES)  in (80,82,83,84)
+AND   T.KIND=17
+AND T.DATE_OF BETWEEN TO_DATE('01.07.2017  00:00:00','DD.MM.YYYY HH24:MI:SS')
+                     and TO_DATE('24.07.2017  00:00:00',
+        'DD.MM.YYYY HH24:MI:SS')
+GROUP by  nvl(T.NEW_CARD_SERIES, T.CARD_SERIES), TO_CHAR(T.DATE_OF, 'YYYYMMDD'
+        )
+order by  nvl(T.NEW_CARD_SERIES, T.CARD_SERIES), TO_CHAR(T.DATE_OF, 'YYYYMMDD'
+        )
+
+--stat by ekl
+SELECT
+ nvl(T.NEW_CARD_SERIES, T.CARD_SERIES)  as SER,
+ F.File_name
+ , count(*) as kol
+FROM CPTT.T_DATA T
+     INNER JOIN CPTT.FILE_LOAD F on T.id_file_load = F.ID
+ WHERE
+      nvl(T.NEW_CARD_SERIES, T.CARD_SERIES)  in (80,82,83,84)
+AND   T.KIND=17
+AND T.DATE_OF BETWEEN TO_DATE('01.08.2017  00:00:00','DD.MM.YYYY HH24:MI:SS')
+                     and TO_DATE('31.08.2017  00:00:00',
+        'DD.MM.YYYY HH24:MI:SS')
+--and F.File_name != '82698089.013.013.030717.150449.txt'
+GROUP by  nvl(T.NEW_CARD_SERIES, T.CARD_SERIES),  F.File_name
+order by  nvl(T.NEW_CARD_SERIES, T.CARD_SERIES),  F.File_name
+
+--max terminal date from   tran
+select MAX(O.NAME), TT.CODE, MAX(T.INS_DATE) as LAST_TT
+,MAX(TT.LAST_UNLOAD_DATE) as LAST_UNLOAD_DATE
+FROM CPTT.T_DATA T
+    INNER JOIN CPTT.DIVISION D ON T.ID_DIVISION=D.ID
+    INNER JOIN CPTT.OPERATOR O ON D.ID_OPERATOR=O.ID  and O.ROLE=1
+    RIGHT JOIN CPTT.TERM TT  ON TT.ID=T.id_term
+ WHERE
+    nvl(T.NEW_CARD_SERIES, T.CARD_SERIES)  in (84)
+        --+67,84  from may, -67 from 201707
+and   O.CODE in ('0031','0033','0034')
+--AND   T.KIND=17
+AND TO_CHAR(TRUNC(T.DATE_OF,'MM'), 'DDMMYYYY') = '01072017'
+GROUP BY TT.CODE
+--AND T.INS_DATE < TO_DATE('04.05.2017 9:42:05','DD.MM.YYYY HH24:MI:SS') -
+
+--unload terminal 2
+select R.NAME, R.CODE, R.LAST_UNLOAD_DATE, R2.LAST_TT
+--,R.* , R2.*
+from (
+        select O.NAME, TT.CODE, TT.LAST_UNLOAD_DATE, TT.ID--, TT.*
+        from  CPTT.TERM TT
+         INNER JOIN CPTT.DIVISION D ON TT.ID_DIVISION=D.ID
+         INNER JOIN CPTT.OPERATOR O ON D.ID_OPERATOR=O.ID
+           --and O.ROLE=2 --cash in (kind=1)
+           and O.ROLE=1 --transport (kind=2)
+        WHERE
+          UPPER(O.NAME) like  '%ИРКУТСК%'
+          --AND TT.CODE like '80004264%'
+          --AND TRUNC(sysdate,'DD')-TRUNC(TT.LAST_UNLOAD_DATE,'DD') >=3
+         --ORDER BY O.NAME, TT.LAST_UNLOAD_DATE
+     ) R
+     LEFT JOIN (
+     select  MAX(T.INS_DATE) as LAST_TT, T.id_term
+             FROM CPTT.T_DATA T
+     WHERE
+         T.INS_DATE > TO_DATE('01.01.2017 0:00:00','DD.MM.YYYY HH24:MI:SS')
+         --and nvl(T.NEW_CARD_SERIES, T.CARD_SERIES)  in (84) --+67,84  from may, -67 from 201707
+      --and   O.CODE in ('0031','0033','0034')
+      --AND   T.KIND=17
+      --AND TO_CHAR(TRUNC(T.DATE_OF,'MM'), 'DDMMYYYY') = '01072017'
+     GROUP BY T.id_term
+     ) R2  ON R.ID=R2.id_term
